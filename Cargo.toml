@@ -6,6 +6,7 @@ rust-version = "1.80"
 description = "Async Rust SDK for E2B sandboxes, wire-compatible with the official E2B JS/Python SDKs"
 license = "Apache-2.0"
 readme = "README.md"
+repository = "https://github.com/traumventures/e2b-rs"
 keywords = ["e2b", "sandbox", "firecracker", "agents"]
 categories = ["api-bindings", "asynchronous"]
 

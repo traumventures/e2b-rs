@@ -87,7 +87,12 @@ PTY or watch stream stops after 60 s unless you set `timeout`.
 ```sh
 cargo test                                  # unit tests, offline
 E2B_API_KEY=... cargo test --test live      # creates real sandboxes and kills them afterwards
+
+# against e2b-minimal
+E2B_API_URL=http://host:3000 E2B_SANDBOX_URL=http://host:3000 E2B_API_KEY=any cargo test --test live
 ```
+
+The live suite passes against E2B Cloud and against e2b-minimal (envd 0.9).
 
 The live suite checks the lifecycle (create, info, list, timeout, connect,
 kill), commands (env, cwd, user, exit codes, callbacks, timeouts,
