@@ -8,8 +8,7 @@ requests as the official JavaScript and Python SDKs (`e2b` 2.56):
   filesystem, and HTTP `/files` for uploads and downloads
 
 Sandboxes created with this crate work with the official SDKs, and the other
-way round. It works with E2B Cloud and with self-hosted
-[e2b-minimal](https://github.com/traumventures/e2b-minimal).
+way round. It works with E2B Cloud and with self-hosted E2B.
 
 ```rust
 use e2b::{CommandOptions, Sandbox, SandboxOptions};
@@ -49,10 +48,10 @@ To set them in code, build a `ConnectionConfig`
 (`ConnectionConfig::from_env().with_api_key(..)`) and pass it with
 `SandboxOptions::config`.
 
-For e2b-minimal:
+For a self-hosted E2B where API and sandbox traffic share one address:
 
 ```sh
-export E2B_API_URL=http://your-host:3000 E2B_SANDBOX_URL=http://your-host:3000 E2B_API_KEY=any
+export E2B_API_URL=http://your-host:3000 E2B_SANDBOX_URL=http://your-host:3000
 ```
 
 ## API
@@ -88,11 +87,9 @@ PTY or watch stream stops after 60 s unless you set `timeout`.
 cargo test                                  # unit tests, offline
 E2B_API_KEY=... cargo test --test live      # creates real sandboxes and kills them afterwards
 
-# against e2b-minimal
-E2B_API_URL=http://host:3000 E2B_SANDBOX_URL=http://host:3000 E2B_API_KEY=any cargo test --test live
+# against a self-hosted E2B
+E2B_API_URL=http://host:3000 E2B_SANDBOX_URL=http://host:3000 E2B_API_KEY=... cargo test --test live
 ```
-
-The live suite passes against E2B Cloud and against e2b-minimal (envd 0.9).
 
 The live suite checks the lifecycle (create, info, list, timeout, connect,
 kill), commands (env, cwd, user, exit codes, callbacks, timeouts,
@@ -123,7 +120,7 @@ in both directions.
 cd compat && bun install
 E2B_API_KEY=... bun run.ts                     # all scenarios, 4 at a time
 E2B_API_KEY=... bun run.ts files commands.run  # scenarios with these prefixes
-# e2b-minimal: also set E2B_API_URL and E2B_SANDBOX_URL; --jobs 1 avoids its start limit
+# self-hosted E2B: also set E2B_API_URL and E2B_SANDBOX_URL; --jobs 1 limits parallel sandbox starts
 ```
 
 It needs bun and Node 22+ (`COMPAT_NODE` picks the binary). A run exits
@@ -131,7 +128,7 @@ non-zero on any difference and writes the details to `compat/out/report.json`.
 The scenarios live in `compat/js/scenarios.mjs` and `examples/compat.rs`; add
 a new one to both under the same name.
 
-The last run passes all 32 checks against E2B Cloud and against e2b-minimal.
+The last run passes all 32 checks against E2B Cloud.
 
 ## Regenerating the protobuf code
 
