@@ -5,7 +5,7 @@
 //   cd compat && bun install && bun run.ts [scenario-prefix...] [--jobs N]
 //
 // Talks to whatever E2B_API_URL / E2B_SANDBOX_URL / E2B_DOMAIN point at
-// (E2B Cloud by default, or e2b-minimal). Needs E2B_API_KEY.
+// (E2B Cloud by default, or a self-hosted E2B). Needs E2B_API_KEY.
 import { createHash } from 'node:crypto'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { fromBinary, fromJson, toJson, type DescMessage } from '@bufbuild/protobuf'

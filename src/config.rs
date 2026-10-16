@@ -34,7 +34,7 @@ pub struct ConnectionConfig {
     /// Explicit API URL; default `https://api.<domain>`.
     pub api_url: Option<String>,
     /// Explicit sandbox URL. All envd traffic goes there, routed with the
-    /// `E2b-Sandbox-Id` / `E2b-Sandbox-Port` headers (e2b-minimal uses this).
+    /// `E2b-Sandbox-Id` / `E2b-Sandbox-Port` headers (for self-hosted E2B).
     pub sandbox_url: Option<String>,
     pub request_timeout: Duration,
     /// Extra headers sent to the E2B API.

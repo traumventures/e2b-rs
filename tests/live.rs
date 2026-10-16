@@ -1,8 +1,8 @@
-//! Live tests against E2B Cloud or e2b-minimal. Skipped without `E2B_API_KEY`.
+//! Live tests against E2B Cloud or a self-hosted E2B. Skipped without `E2B_API_KEY`.
 //!
 //! ```sh
 //! E2B_API_KEY=... cargo test --test live -- --test-threads=4
-//! # e2b-minimal: also E2B_API_URL=http://host:3000 E2B_SANDBOX_URL=http://host:3000
+//! # self-hosted E2B: also E2B_API_URL=http://host:3000 E2B_SANDBOX_URL=http://host:3000
 //! ```
 
 use std::sync::{Arc, Mutex};

@@ -2,8 +2,7 @@
 //!
 //! Speaks the same wire protocols as the official JavaScript and Python SDKs:
 //! the E2B REST API for the sandbox lifecycle and envd's Connect RPC + HTTP API
-//! inside the sandbox. Works with E2B Cloud and with self-hosted
-//! [e2b-minimal](https://github.com/traumventures/e2b-minimal) (set
+//! inside the sandbox. Works with E2B Cloud and with self-hosted E2B (set
 //! `E2B_API_URL` and `E2B_SANDBOX_URL`).
 //!
 //! ```no_run
