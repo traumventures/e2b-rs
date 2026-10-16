@@ -73,6 +73,27 @@ impl Error {
         matches!(self, Error::NotFound(_) | Error::FileNotFound(_) | Error::SandboxNotFound(_))
     }
 
+    /// Name of the matching error class in the official JS SDK (`err.name`),
+    /// e.g. `"CommandExitError"`. Errors the JS SDK raises as a plain
+    /// `SandboxError` (generic API and envd errors) return `"SandboxError"`.
+    pub fn kind(&self) -> &'static str {
+        match self {
+            Error::CommandExit(_) => "CommandExitError",
+            Error::Timeout(_) => "TimeoutError",
+            Error::SandboxNotRunning(_) => "SandboxNotRunningError",
+            Error::SandboxNotFound(_) => "SandboxNotFoundError",
+            Error::FileNotFound(_) => "FileNotFoundError",
+            Error::NotFound(_) => "NotFoundError",
+            Error::InvalidArgument(_) => "InvalidArgumentError",
+            Error::Authentication(_) => "AuthenticationError",
+            Error::RateLimit(_) => "RateLimitError",
+            Error::NotEnoughSpace(_) => "NotEnoughSpaceError",
+            Error::Template(_) => "TemplateError",
+            Error::Api { .. } | Error::Sandbox { .. } | Error::Protocol(_) => "SandboxError",
+            Error::Http(_) => "Error",
+        }
+    }
+
     pub(crate) fn from_reqwest(e: reqwest::Error, what: &str) -> Self {
         if e.is_timeout() {
             Error::Timeout(format!("{what}: {e}"))

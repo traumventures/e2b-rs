@@ -93,7 +93,7 @@ impl RpcClient {
             .header("Connect-Protocol-Version", "1")
             .body(req.encode_to_vec());
         if !timeout.is_zero() {
-            rb = rb.timeout(timeout).header("Connect-Timeout-Ms", timeout.as_millis().to_string());
+            rb = rb.timeout(timeout);
         }
         let resp = rb.send().await.map_err(|e| Error::from_reqwest(e, path))?;
         if !resp.status().is_success() {

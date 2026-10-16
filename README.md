@@ -72,7 +72,7 @@ official SDKs offer as a static method takes an id, with a `_by_id` suffix.
 | `CommandHandle.wait`, `kill`, `disconnect`, `sendStdin`, `closeStdin`, `stdout`, `stderr`, `pid` | the same, plus `next_output()` to read the output as a stream and `wait_raw()`, which does not fail on a non-zero exit |
 | `files.read`, `write`, `writeFiles`, `list(path, { depth })`, `exists`, `getInfo`, `makeDir`, `rename`, `remove`, `watchDir` | `read` / `read_to_string` / `read_as`, `write` / `write_as` / `write_with` (user and metadata), `write_files`, `list(path, depth)`, `exists`, `get_info`, `make_dir`, `rename`, `remove`, `watch_dir(path, recursive, timeout)` |
 | `pty.create`, `sendInput`, `resize`, `kill`, `connect` | the same |
-| error classes | `Error::{CommandExit, Timeout, SandboxNotFound, SandboxNotRunning, FileNotFound, NotFound, InvalidArgument, Authentication, RateLimit, NotEnoughSpace, Template, Api, Sandbox, ..}` |
+| error classes | `Error::{CommandExit, Timeout, SandboxNotFound, SandboxNotRunning, FileNotFound, NotFound, InvalidArgument, Authentication, RateLimit, NotEnoughSpace, Template, Api, Sandbox, ..}`; `err.kind()` returns the JS class name (`"CommandExitError"`, …) |
 
 These are not implemented yet: `Template` (the builder), `Volume`, `Secret`,
 snapshots and `fork`, `updateNetwork`, signed upload and download URLs, git
@@ -101,6 +101,37 @@ multi-file, stat, list depth, rename, remove, ownership, metadata, watch), PTY
 (input, resize, exit), pause/resume with memory, and error mapping.
 `examples/quickstart.rs` checks that this crate and the JS SDK can work on the
 same sandbox.
+
+## Compatibility tests
+
+`compat/` runs the same scenarios with the official JS SDK (`e2b` 2.56.0, the
+reference) and with this crate, and compares two things:
+
+1. **Results.** Each scenario prints one JSON value: outputs, file info,
+   booleans and error kinds (JS error class names, `Error::kind()` in Rust).
+   Both must be equal.
+2. **Requests.** Each SDK talks to the backend through its own recording proxy.
+   The runner compares every request: method, path, query, the headers that
+   matter (auth, routing, user, timeouts, metadata) and the body. Connect
+   bodies are decoded with the envd protobuf schemas, because the JS SDK sends
+   JSON and this crate sends binary protobuf. Upload bodies are compared by hash.
+
+It also checks interop: a sandbox set up by one SDK is checked by the other,
+in both directions.
+
+```sh
+cd compat && bun install
+E2B_API_KEY=... bun run.ts                     # all scenarios, 4 at a time
+E2B_API_KEY=... bun run.ts files commands.run  # scenarios with these prefixes
+# e2b-minimal: also set E2B_API_URL and E2B_SANDBOX_URL; --jobs 1 avoids its start limit
+```
+
+It needs bun and Node 22+ (`COMPAT_NODE` picks the binary). A run exits
+non-zero on any difference and writes the details to `compat/out/report.json`.
+The scenarios live in `compat/js/scenarios.mjs` and `examples/compat.rs`; add
+a new one to both under the same name.
+
+The last run passes all 32 checks against E2B Cloud and against e2b-minimal.
 
 ## Regenerating the protobuf code
 

@@ -10,7 +10,7 @@ use serde_json::{json, Value};
 
 use crate::api::{ApiClient, SandboxCreated, SandboxInfo, SandboxMetrics, SandboxState};
 use crate::commands::{Commands, Pty};
-use crate::config::{ConnectionConfig, DEFAULT_SANDBOX_TIMEOUT};
+use crate::config::ConnectionConfig;
 use crate::envd::{parse_version, EnvdClient};
 use crate::error::{Error, Result};
 use crate::filesystem::Filesystem;
@@ -43,7 +43,8 @@ pub struct NetworkOptions {
 #[derive(Clone, Debug)]
 pub struct SandboxOptions {
     pub template: String,
-    pub timeout: Duration,
+    /// Sandbox lifetime; `None` leaves the server default (300 s).
+    pub timeout: Option<Duration>,
     pub metadata: HashMap<String, String>,
     pub envs: HashMap<String, String>,
     pub allow_internet_access: Option<bool>,
@@ -61,7 +62,7 @@ impl Default for SandboxOptions {
     fn default() -> Self {
         Self {
             template: DEFAULT_TEMPLATE.into(),
-            timeout: DEFAULT_SANDBOX_TIMEOUT,
+            timeout: None,
             metadata: HashMap::new(),
             envs: HashMap::new(),
             allow_internet_access: None,
@@ -84,7 +85,7 @@ impl SandboxOptions {
         self
     }
     pub fn timeout(mut self, t: Duration) -> Self {
-        self.timeout = t;
+        self.timeout = Some(t);
         self
     }
     pub fn metadata(mut self, k: impl Into<String>, v: impl Into<String>) -> Self {
@@ -132,11 +133,11 @@ impl SandboxOptions {
                 "auto_resume cannot be combined with a filesystem-only pause".into(),
             ));
         }
-        let mut b = json!({
-            "templateID": self.template,
-            "timeout": timeout_secs(self.timeout),
-        });
+        let mut b = json!({ "templateID": self.template });
         let o = b.as_object_mut().unwrap();
+        if let Some(t) = self.timeout {
+            o.insert("timeout".into(), json!(timeout_secs(t)));
+        }
         if !self.metadata.is_empty() {
             o.insert("metadata".into(), json!(self.metadata));
         }

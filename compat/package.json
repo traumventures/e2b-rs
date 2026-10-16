@@ -1,0 +1,9 @@
+{
+  "name": "e2b-rs-compat",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@bufbuild/protobuf": "^2.15.0",
+    "e2b": "2.56.0"
+  }
+}

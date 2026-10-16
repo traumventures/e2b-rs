@@ -26,6 +26,18 @@ pub enum FileType {
     Unknown,
 }
 
+impl FileType {
+    /// Same strings as the official SDKs: `file`, `dir`, `symlink`.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            FileType::File => "file",
+            FileType::Dir => "dir",
+            FileType::Symlink => "symlink",
+            FileType::Unknown => "unknown",
+        }
+    }
+}
+
 /// Result of a write (`WriteInfo`).
 #[derive(Clone, Debug, Deserialize)]
 pub struct WriteInfo {
@@ -54,7 +66,9 @@ pub struct EntryInfo {
 
 impl From<pb::EntryInfo> for EntryInfo {
     fn from(e: pb::EntryInfo) -> Self {
+        // New envd marks symlinks with `is_symlink` (type is the target's), like the JS SDK.
         let file_type = match pb::FileType::try_from(e.r#type) {
+            _ if e.is_symlink => FileType::Symlink,
             Ok(pb::FileType::File) => FileType::File,
             Ok(pb::FileType::Directory) => FileType::Dir,
             Ok(pb::FileType::Symlink) => FileType::Symlink,
@@ -90,6 +104,20 @@ pub enum FilesystemEventType {
     Unknown,
 }
 
+impl FilesystemEventType {
+    /// Same strings as the official SDKs: `create`, `write`, `remove`, `rename`, `chmod`.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            FilesystemEventType::Create => "create",
+            FilesystemEventType::Write => "write",
+            FilesystemEventType::Remove => "remove",
+            FilesystemEventType::Rename => "rename",
+            FilesystemEventType::Chmod => "chmod",
+            FilesystemEventType::Unknown => "unknown",
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct FilesystemEvent {
     /// Path relative to the watched directory.
@@ -111,6 +139,20 @@ pub struct WriteOptions {
     pub user: Option<String>,
     /// User-defined metadata stored as `user.e2b.*` xattrs (envd >= 0.6.2).
     pub metadata: HashMap<String, String>,
+    /// Upload as `application/octet-stream` (envd >= 0.5.7) instead of
+    /// `multipart/form-data`. Off by default, like the official SDKs for
+    /// in-memory data.
+    pub use_octet_stream: bool,
+}
+
+/// Options for [`Filesystem::watch_dir_with`].
+#[derive(Clone, Debug, Default)]
+pub struct WatchOptions {
+    pub recursive: bool,
+    /// `None` = 60 s, `Some(Duration::ZERO)` = no limit.
+    pub timeout: Option<Duration>,
+    /// Ask envd to attach the entry info to each event (envd >= 0.6.3).
+    pub include_entry: bool,
 }
 
 impl WriteEntry {
@@ -233,7 +275,7 @@ impl Filesystem {
                 return Err(Error::InvalidArgument(format!("invalid metadata entry {k:?}")));
             }
         }
-        let mut infos = if self.envd.at_least(versions::OCTET_STREAM_UPLOAD) {
+        let mut infos = if opts.use_octet_stream && self.envd.at_least(versions::OCTET_STREAM_UPLOAD) {
             let mut rb = self
                 .envd
                 .http_request(Method::POST, "/files")
@@ -253,7 +295,8 @@ impl Filesystem {
             }
             resp.json::<Vec<WriteInfo>>().await.map_err(|e| Error::from_reqwest(e, path))?
         } else {
-            self.write_multipart(&[WriteEntry::new(path, data)], user, Some(path)).await?
+            self.write_multipart(&[WriteEntry::new(path, data)], user, Some(path), &opts.metadata)
+                .await?
         };
         if infos.is_empty() {
             return Err(Error::Protocol("expected information about the written file".into()));
@@ -266,10 +309,16 @@ impl Filesystem {
         if files.is_empty() {
             return Ok(vec![]);
         }
-        self.write_multipart(&files, user, None).await
+        self.write_multipart(&files, user, None, &HashMap::new()).await
     }
 
-    async fn write_multipart(&self, files: &[WriteEntry], user: Option<&str>, path: Option<&str>) -> Result<Vec<WriteInfo>> {
+    async fn write_multipart(
+        &self,
+        files: &[WriteEntry],
+        user: Option<&str>,
+        path: Option<&str>,
+        metadata: &HashMap<String, String>,
+    ) -> Result<Vec<WriteInfo>> {
         let mut form = reqwest::multipart::Form::new();
         for f in files {
             form = form.part("file", reqwest::multipart::Part::bytes(f.data.clone()).file_name(f.path.clone()));
@@ -281,10 +330,11 @@ impl Filesystem {
         if let Some(u) = self.envd.user(user) {
             q.push(("username", u.to_string()));
         }
-        let resp = self
-            .envd
-            .http_request(Method::POST, "/files")
-            .query(&q)
+        let mut rb = self.envd.http_request(Method::POST, "/files").query(&q);
+        for (k, v) in metadata {
+            rb = rb.header(format!("X-Metadata-{k}"), v);
+        }
+        let resp = rb
             .timeout(self.envd.config.request_timeout)
             .multipart(form)
             .send()
@@ -357,6 +407,30 @@ impl Filesystem {
     /// Watches a directory for changes. `timeout` limits the watch (`None` = 60 s,
     /// zero = unlimited), like `timeoutMs` in the official SDKs.
     pub async fn watch_dir(&self, path: &str, recursive: bool, timeout: Option<Duration>) -> Result<WatchHandle> {
+        self.watch_dir_with(
+            path,
+            WatchOptions {
+                recursive,
+                timeout,
+                include_entry: false,
+            },
+        )
+        .await
+    }
+
+    /// Watches a directory with options.
+    pub async fn watch_dir_with(&self, path: &str, opts: WatchOptions) -> Result<WatchHandle> {
+        let WatchOptions {
+            recursive,
+            timeout,
+            include_entry,
+        } = opts;
+        if include_entry && !self.envd.at_least(versions::FS_EVENT_ENTRY_INFO) {
+            return Err(Error::Template(format!(
+                "envd {} cannot include entry info; rebuild the template",
+                self.envd.version_raw
+            )));
+        }
         if recursive && !self.envd.at_least(versions::RECURSIVE_WATCH) {
             return Err(Error::Template(format!(
                 "envd {} cannot watch recursively; rebuild the template",
@@ -366,7 +440,7 @@ impl Filesystem {
         let req = pb::WatchDirRequest {
             path: path.into(),
             recursive,
-            include_entry: self.envd.at_least(versions::FS_EVENT_ENTRY_INFO),
+            include_entry,
             allow_network_mounts: false,
         };
         let mut stream = self
