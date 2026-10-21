@@ -37,7 +37,7 @@ The environment variables are the ones the official SDKs read:
 
 | Variable | Default |
 | --- | --- |
-| `E2B_API_KEY` | required (sent as `X-API-Key`) |
+| `E2B_API_KEY` | sent as `X-API-Key` when set; without it (and without `E2B_ACCESS_TOKEN`) requests go out unauthenticated, for a self-hosted E2B without auth |
 | `E2B_ACCESS_TOKEN` | optional, sent as `Authorization: Bearer` |
 | `E2B_DOMAIN` | `e2b.app` |
 | `E2B_API_URL` | `https://api.<domain>` |

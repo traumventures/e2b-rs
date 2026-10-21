@@ -63,11 +63,6 @@ impl ApiClient {
         query: &[(&str, String)],
         body: Option<&serde_json::Value>,
     ) -> Result<reqwest::Response> {
-        if self.config.api_key.is_none() && self.config.access_token.is_none() {
-            return Err(Error::Authentication(
-                "API key is required: set E2B_API_KEY or pass it in ConnectionConfig".into(),
-            ));
-        }
         let mut rb = self.request(method, path).query(query);
         if let Some(b) = body {
             rb = rb.json(b);
